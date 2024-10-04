@@ -1,0 +1,10 @@
+.DS_Store
+.idea
+dist
+dist-ssr
+explorations
+node_modules
+playground-temp
+temp
+TODOs.md
+.eslintcache

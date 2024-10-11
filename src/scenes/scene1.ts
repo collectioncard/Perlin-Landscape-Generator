@@ -30,12 +30,18 @@ export class scene1 extends Scene {
             this.shouldAutoZoom = !this.shouldAutoZoom;
         });
 
-        this.input.keyboard!.on('keydown-U', () => {
+        this.input.keyboard!.on('keydown-PERIOD', () => {
+            this.zoomMap(.1);
+        });
+
+        this.input.keyboard!.on('keydown-COMMA', () => {
             this.zoomMap(-.1);
         });
 
-        this.input.keyboard!.on('keydown-I', () => {
-            this.zoomMap(.1);
+        this.input.keyboard!.on('keydown-R', () => {
+            this.noise = new Noise(Math.random());
+            this.generateRandomMap();
+            this.scene.restart();
         });
 
     }
@@ -53,15 +59,15 @@ export class scene1 extends Scene {
     }
 
     private autoZoom(): void {
-        let temp: boolean = false;
+        let shouldZoom: boolean = false;
 
         if (this.currentZoomLevel >= 20) {
-            temp = true;
+            shouldZoom = true;
         } else if (this.currentZoomLevel <= 0) {
-            temp = false;
+            shouldZoom = false;
         }
 
-        this.zoomMap(temp ? -0.01 : 0.01)
+        this.zoomMap(shouldZoom ? -0.01 : 0.01)
     }
 
     generateRandomMap(): number[][]{

@@ -1,6 +1,8 @@
 import { Scene } from 'phaser';
 // @ts-ignore
 import { Noise } from 'noisejs';
+// @ts-ignore
+import tracery from 'tracery-grammar';
 
 const TILESIZE = 64;
 
@@ -10,6 +12,36 @@ interface Group {
     members: [number, number][];
     label?: Phaser.GameObjects.Text;
 }
+
+const grammar = tracery.createGrammar({
+    "townName": [
+        "#prefix##suffix#",
+        "#prefix##name#",
+        "#adjective# #place#",
+        "#name##suffix#"
+    ],
+    "prefix": [
+        "San", "Green", "Silver", "Red", "Iron", "Santa", "New", "Old", "East", "West", "North", "South", "Port", "Saint",
+        "Fort", "Mount", "Spring", "Summer", "Winter", "Autumn", "Golden", "Crystal", "Emerald", "Ruby", "Sapphire",
+        "Diamond", "Pearl", "Lavender"
+    ],
+    "suffix": [
+        "town", "vale", "burg", "ridge", "haven", "ford", "ham", "ton", "field", "wood", "bridge", "port", "mouth"
+    ],
+    "adjective": [
+        "Lonely", "Silent", "Forgotten", "Shimmering", "Windy", "Breezy", "Sunny", "Rainy", "Misty", "Foggy", "Snowy",
+        "Icy", "Hot", "Cold", "Warm", "Gloomy", "Dark", "Bright", "Glowing", "Shining", "Dusty", "Sandy", "Rocky",
+        "Muddy", "Leafy", "Flowery", "Grassy", "Mossy", "Soggy", "Dry", "Wet", "Damp", "Chilly", "Cool", "Stormy",
+        "Calm", "Peaceful", "Quiet", "Busy", "Active", "Sleepy"
+    ],
+    "place": [
+        "Atoll", "Peak", "Valley", "Shore", "Island"
+    ],
+    "name": [
+        "Haven", "Wood", "Bridge", "Field", "Grove", "Cruz", "Barbara", "Diego"
+    ]
+});
+
 
 export class scene1 extends Scene {
     noise: Noise = new Noise(Math.random());
@@ -204,7 +236,7 @@ export class scene1 extends Scene {
             group.label = this.add.text(
                 leaderY * TILESIZE + TILESIZE / 2,
                 leaderX * TILESIZE + TILESIZE / 2,
-                'Place_Name',
+                grammar.flatten('#townName#'),
                 {
                     fontSize: '24px',
                     // @ts-ignore

@@ -1,4 +1,4 @@
-import { scene1 } from './scenes/scene1';
+import {scene1} from './scenes/scene1';
 
 import { Game, Types } from "phaser";
 

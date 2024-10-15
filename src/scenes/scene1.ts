@@ -7,7 +7,7 @@ import tracery from "tracery-grammar";
 
 import EasyStar from "easystarjs";
 
-const TILESIZE: number = 64;
+const TILESIZE: number = 16;
 
 interface Group {
   leader: [number, number];
@@ -202,8 +202,7 @@ export class scene1 extends Scene {
       tileHeight: TILESIZE,
     });
     const tiles = map.addTilesetImage("tiles");
-    const mapLayer = map.createLayer(0, tiles!, 0, 0);
-    mapLayer!.setScale(0.25);
+    map.createLayer(0, tiles!, 0, 0);
 
     //Give easystar the map
     this.easyStar.setGrid(worldMap);
@@ -368,8 +367,8 @@ export class scene1 extends Scene {
       const [leaderX, leaderY] = group.leader;
       //(tile.x / 4) * TILESIZE + 8
       group.label = this.add.text(
-        (leaderY / 4) * TILESIZE + 8,
-        (leaderX / 4) * TILESIZE + 8,
+        leaderY * TILESIZE + 8,
+        leaderX * TILESIZE + 8,
         grammar.flatten("#townName#"),
         {
           fontSize: "12px",
@@ -463,8 +462,8 @@ export class scene1 extends Scene {
     treeEdges.forEach((edge) => {
       edge.path.forEach((tile) => {
         this.add.circle(
-          (tile.x / 4) * TILESIZE + 8,
-          (tile.y / 4) * TILESIZE + 8,
+          tile.x * TILESIZE + 8,
+          tile.y * TILESIZE + 8,
           4,
           0x00ff00,
         ); // Draw path

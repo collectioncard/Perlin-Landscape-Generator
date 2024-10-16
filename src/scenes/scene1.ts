@@ -17,6 +17,13 @@ interface Group {
   paths?: pathInfo[];
 }
 
+const GRASS = 18;
+const DIRT = 12;
+const SAND = 6;
+const WATER = 0;
+
+let phaserMap: any;
+
 interface pathInfo {
   path: any;
   distance: number;
@@ -154,11 +161,11 @@ export class scene1 extends Scene {
     //Initialize EasyStar//
 
     //Allow sand, dirt, and grass tiles
-    this.easyStar.setAcceptableTiles([1, 2, 3]);
+    this.easyStar.setAcceptableTiles([SAND, DIRT, GRASS]);
 
-    this.easyStar.setTileCost(1, 10); // Sand is hard to walk on
-    this.easyStar.setTileCost(2, 2); // Dirt is fine
-    this.easyStar.setTileCost(3, 1); // Grass is the best
+    this.easyStar.setTileCost(SAND, 10); // Sand is hard to walk on
+    this.easyStar.setTileCost(DIRT, 2); // Dirt is fine
+    this.easyStar.setTileCost(GRASS, 1); // Grass is the best
   }
 
   create(): void {
@@ -202,13 +209,15 @@ export class scene1 extends Scene {
       tileHeight: TILESIZE,
     });
     const tiles = map.addTilesetImage("tiles");
-    map.createLayer(0, tiles!, 0, 0);
+    phaserMap = map.createLayer(0, tiles!, 0, 0);
 
     //Give easystar the map
     this.easyStar.setGrid(worldMap);
 
     //Group the tiles into clusters
-    const groups: Group[] = this.groupTiles(worldMap, 3);
+    const groups: Group[] = this.groupTiles(worldMap, GRASS, true);
+    const groups2: Group[] = this.groupTiles(worldMap, DIRT, true);
+    const groups1: Group[] = this.groupTiles(worldMap, SAND, true);
 
     //Label each group with a town name
     this.labelGroups(groups);
@@ -256,13 +265,13 @@ export class scene1 extends Scene {
           normalizedMin;
 
         if (normalizedValue < 2) {
-          normalizedValue = 0;
+          normalizedValue = WATER;
         } else if (normalizedValue < 4) {
-          normalizedValue = 1;
+          normalizedValue = SAND;
         } else if (normalizedValue < 6) {
-          normalizedValue = 2;
+          normalizedValue = DIRT;
         } else {
-          normalizedValue = 3;
+          normalizedValue = GRASS;
         }
 
         noiseMap[x][y] = normalizedValue;
@@ -277,7 +286,7 @@ export class scene1 extends Scene {
   groupTiles(
     tileMap: number[][],
     tileID: number,
-    drawBoarders: boolean = false,
+    drawBorders: boolean = false,
   ): Group[] {
     const tileDirections: [number, number][] = [
       [0, -1], // Up
@@ -286,7 +295,7 @@ export class scene1 extends Scene {
       [1, 0], // Right
     ];
 
-    console.log(drawBoarders);
+    console.log(drawBorders);
 
     const vistedTiles = new Array(this.mapWidth)
       .fill(0)
@@ -301,10 +310,19 @@ export class scene1 extends Scene {
         y < 0 ||
         x >= this.mapWidth ||
         y >= this.mapHeight ||
-        vistedTiles[x][y] ||
-        tileMap[x][y] !== tileID
+        vistedTiles[x][y]
       ) {
         return;
+      }
+
+      if (tileMap[x][y] !== tileID) {
+        if (drawBorders && tileMap[x][y] < tileID) {
+          //We have a border, draw it
+
+          return;
+        } else {
+          return;
+        }
       }
 
       vistedTiles[x][y] = true;
@@ -356,6 +374,15 @@ export class scene1 extends Scene {
           foundGroups.push(group);
         }
       }
+    }
+
+    //loop through groups and draw the borders
+    if (drawBorders) {
+      foundGroups.forEach((group) => {
+        group.members.forEach(([x, y]) => {
+          this.doBorderTiles(x, y);
+        });
+      });
     }
 
     return foundGroups;
@@ -479,6 +506,63 @@ export class scene1 extends Scene {
     this.currentZoomLevel += amount;
     console.log(`Changing zoom to ${this.currentZoomLevel}`);
     this.scene.restart();
+  }
+
+  doBorderTiles(yPos: number, xPos: number): void {
+    // Get the current tile ID
+    const tileID = phaserMap.getTileAt(xPos, yPos, true).index;
+
+    // Determine if there's a smaller tile in each direction
+    const hasTop =
+      yPos > 0
+        ? phaserMap.getTileAt(xPos, yPos - 1, true).index < tileID
+        : true;
+    const hasBottom =
+      yPos < this.mapHeight - 1
+        ? phaserMap.getTileAt(xPos, yPos + 1, true).index < tileID
+        : true;
+    const hasLeft =
+      xPos > 0
+        ? phaserMap.getTileAt(xPos - 1, yPos, true).index < tileID
+        : true;
+    const hasRight =
+      xPos < this.mapWidth - 1
+        ? phaserMap.getTileAt(xPos + 1, yPos, true).index < tileID
+        : true;
+
+    // Create a bitmask of the directions
+    const bitmask =
+      (hasTop ? 1 : 0) |
+      (hasBottom ? 2 : 0) |
+      (hasLeft ? 4 : 0) |
+      (hasRight ? 8 : 0);
+
+    // Lookup table for tile offsets and rotations
+    const tileData: { [key: number]: { offset: number; rotation: number } } = {
+      1: { offset: 1, rotation: 0 }, // Top
+      2: { offset: 1, rotation: Math.PI }, // Bottom
+      3: { offset: 5, rotation: Math.PI / 2 }, // Top and Bottom
+      4: { offset: 1, rotation: -Math.PI / 2 }, // Left
+      5: { offset: 2, rotation: -Math.PI / 2 }, // Top and Left
+      6: { offset: 2, rotation: Math.PI }, // Bottom and Left
+      7: { offset: 3, rotation: (3 * Math.PI) / 2 }, // Top, Bottom, and Left
+      8: { offset: 1, rotation: Math.PI / 2 }, // Right
+      9: { offset: 2, rotation: 0 }, // Top and Right
+      10: { offset: 2, rotation: Math.PI / 2 }, // Bottom and Right
+      11: { offset: 3, rotation: Math.PI / 2 }, // Top, Bottom, and Right
+      12: { offset: 5, rotation: 0 }, // Left and Right
+      13: { offset: 3, rotation: 0 }, // Top, Left, and Right
+      14: { offset: 3, rotation: Math.PI }, // Bottom, Left, and Right
+      15: { offset: 4, rotation: 0 }, // All sides
+    };
+
+    // Handle tile placement and rotation based on the bitmask
+    if (tileData[bitmask]) {
+      const { offset, rotation } = tileData[bitmask];
+      phaserMap.putTileAt(tileID + offset, xPos, yPos);
+      const tile = phaserMap.getTileAt(xPos, yPos);
+      tile.rotation = rotation;
+    }
   }
 
   //Bounces the map zoom level between 0 and 20. Calls the zoomMap function

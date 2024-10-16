@@ -216,8 +216,8 @@ export class scene1 extends Scene {
 
     //Group the tiles into clusters
     const groups: Group[] = this.groupTiles(worldMap, GRASS, true);
-    const groups2: Group[] = this.groupTiles(worldMap, DIRT, true);
-    const groups1: Group[] = this.groupTiles(worldMap, SAND, true);
+    this.groupTiles(worldMap, DIRT, true);
+    this.groupTiles(worldMap, SAND, true);
 
     //Label each group with a town name
     this.labelGroups(groups);

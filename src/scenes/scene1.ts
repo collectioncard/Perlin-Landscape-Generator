@@ -1,13 +1,9 @@
 import { Scene } from "phaser";
-
 // @ts-ignore
 import { Noise } from "noisejs";
 // @ts-ignore
 import tracery from "tracery-grammar";
-
 import EasyStar from "easystarjs";
-
-const TILESIZE: number = 16;
 
 interface Group {
   leader: [number, number];
@@ -17,17 +13,20 @@ interface Group {
   paths?: pathInfo[];
 }
 
+interface pathInfo {
+  path: any;
+  distance: number;
+}
+
+const TILESIZE: number = 16;
+
+//Tile IDs for the base tiles
 const GRASS = 18;
 const DIRT = 12;
 const SAND = 6;
 const WATER = 0;
 
-let phaserMap: any;
-
-interface pathInfo {
-  path: any;
-  distance: number;
-}
+let tileMap: any;
 
 const grammar = tracery.createGrammar({
   townName: [
@@ -198,34 +197,32 @@ export class scene1 extends Scene {
   ////************Map Generation************////
 
   //Generates a complete map with named areas and roads. Returns a 2D array of tile data.
-  generateCompleteMap(): { worldMap: number[][]; groups: Group[] } {
+  generateCompleteMap(): void {
     //Generate the base map from perlin noise
     let worldMap: number[][] = this.generateNoiseMap();
 
-    //Draw the map on the screen
+    //Make the map out of the worldMap data
     const map = this.make.tilemap({
       data: worldMap,
       tileWidth: TILESIZE,
       tileHeight: TILESIZE,
     });
     const tiles = map.addTilesetImage("tiles");
-    phaserMap = map.createLayer(0, tiles!, 0, 0);
+    tileMap = map.createLayer(0, tiles!, 0, 0);
 
-    //Give easystar the map
+    //Give easystar the base map (This allows us to ignore borders n stuff)
     this.easyStar.setGrid(worldMap);
 
-    //Group the tiles into clusters
-    const groups: Group[] = this.groupTiles(worldMap, GRASS, true);
+    //Group the tiles into clusters (Also draws borders)
+    const grassGroups: Group[] = this.groupTiles(worldMap, GRASS, true);
     this.groupTiles(worldMap, DIRT, true);
     this.groupTiles(worldMap, SAND, true);
 
     //Label each group with a town name
-    this.labelGroups(groups);
+    this.labelGroups(grassGroups);
 
     //Draw roads between each group leader
-    this.buildRoads(groups);
-
-    return { worldMap, groups: [] };
+    this.buildRoads(grassGroups);
   }
 
   //Creates a 2D array of normalized values using perlin noise.
@@ -295,8 +292,6 @@ export class scene1 extends Scene {
       [1, 0], // Right
     ];
 
-    console.log(drawBorders);
-
     const vistedTiles = new Array(this.mapWidth)
       .fill(0)
       .map(() => new Array(this.mapHeight));
@@ -310,19 +305,10 @@ export class scene1 extends Scene {
         y < 0 ||
         x >= this.mapWidth ||
         y >= this.mapHeight ||
-        vistedTiles[x][y]
+        vistedTiles[x][y] ||
+        tileMap[x][y] !== tileID
       ) {
         return;
-      }
-
-      if (tileMap[x][y] !== tileID) {
-        if (drawBorders && tileMap[x][y] < tileID) {
-          //We have a border, draw it
-
-          return;
-        } else {
-          return;
-        }
       }
 
       vistedTiles[x][y] = true;
@@ -392,10 +378,9 @@ export class scene1 extends Scene {
   labelGroups(groups: Group[]): void {
     groups.forEach((group) => {
       const [leaderX, leaderY] = group.leader;
-      //(tile.x / 4) * TILESIZE + 8
       group.label = this.add.text(
-        leaderY * TILESIZE + 8,
-        leaderX * TILESIZE + 8,
+        leaderY * TILESIZE + TILESIZE / 2,
+        leaderX * TILESIZE + TILESIZE / 2,
         grammar.flatten("#townName#"),
         {
           fontSize: "12px",
@@ -485,7 +470,6 @@ export class scene1 extends Scene {
     });
 
     //Finally, draw the roads on the map
-
     treeEdges.forEach((edge) => {
       edge.path.forEach((tile) => {
         this.add.circle(
@@ -493,7 +477,7 @@ export class scene1 extends Scene {
           tile.y * TILESIZE + 8,
           4,
           0x00ff00,
-        ); // Draw path
+        );
       });
     });
   }
@@ -510,24 +494,20 @@ export class scene1 extends Scene {
 
   doBorderTiles(yPos: number, xPos: number): void {
     // Get the current tile ID
-    const tileID = phaserMap.getTileAt(xPos, yPos, true).index;
+    const tileID = tileMap.getTileAt(xPos, yPos, true).index;
 
     // Determine if there's a smaller tile in each direction
     const hasTop =
-      yPos > 0
-        ? phaserMap.getTileAt(xPos, yPos - 1, true).index < tileID
-        : true;
+      yPos > 0 ? tileMap.getTileAt(xPos, yPos - 1, true).index < tileID : true;
     const hasBottom =
       yPos < this.mapHeight - 1
-        ? phaserMap.getTileAt(xPos, yPos + 1, true).index < tileID
+        ? tileMap.getTileAt(xPos, yPos + 1, true).index < tileID
         : true;
     const hasLeft =
-      xPos > 0
-        ? phaserMap.getTileAt(xPos - 1, yPos, true).index < tileID
-        : true;
+      xPos > 0 ? tileMap.getTileAt(xPos - 1, yPos, true).index < tileID : true;
     const hasRight =
       xPos < this.mapWidth - 1
-        ? phaserMap.getTileAt(xPos + 1, yPos, true).index < tileID
+        ? tileMap.getTileAt(xPos + 1, yPos, true).index < tileID
         : true;
 
     // Create a bitmask of the directions
@@ -559,8 +539,8 @@ export class scene1 extends Scene {
     // Handle tile placement and rotation based on the bitmask
     if (tileData[bitmask]) {
       const { offset, rotation } = tileData[bitmask];
-      phaserMap.putTileAt(tileID + offset, xPos, yPos);
-      const tile = phaserMap.getTileAt(xPos, yPos);
+      tileMap.putTileAt(tileID + offset, xPos, yPos);
+      const tile = tileMap.getTileAt(xPos, yPos);
       tile.rotation = rotation;
     }
   }
